@@ -1,0 +1,70 @@
+name: Refresh data
+
+# PECD publishes the running year one month at a time, about three weeks after the month ends.
+# Checking twice a week finds a new month within days and keeps the raw-data cache in use
+# (GitHub drops caches that are not read for 7 days).
+on:
+  schedule:
+    - cron: "0 5 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild even when CDS has no new month
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install cdsapi==0.7.7 pandas==3.0.6 requests==2.34.2
+
+      - name: CDS credentials
+        env:
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+        run: printf 'url: https://cds.climate.copernicus.eu/api\nkey: %s\n' "$CDSAPI_KEY" > ~/.cdsapirc
+
+      # The ERA5 history (about 540 MB of zips). On a cache miss fetch.py downloads it again.
+      - name: Restore raw data
+        uses: actions/cache/restore@v4
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
+          restore-keys: raw-
+
+      - name: Refresh
+        id: refresh
+        run: python pipeline/refresh.py ${{ inputs.force && '--force' || '' }}
+
+      - name: Save raw data
+        if: steps.refresh.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
+
+      # Pushing to main triggers the Cloudflare deploy.
+      - name: Commit
+        if: steps.refresh.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh data up to $(python -c "import json;print(json.load(open('public/data/meta.json'))['lastDate'])")"
+          git push

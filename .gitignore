@@ -1,0 +1,8 @@
+node_modules
+dist
+.venv
+/data/raw/
+/data/*.log
+__pycache__
+.claude
+.wrangler

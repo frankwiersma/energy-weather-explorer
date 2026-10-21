@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Energy Weather Explorer</title>
+    <meta name="description" content="Wind, solar and temperature over Europe since 1950, Dunkelflaute, the effect of pooling wind across countries, and climate projections to 2100, from the Copernicus PECD v4.2." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="8" cy="32" r="5.5" fill="#fff" />
+          <circle cx="20" cy="32" r="4" fill="#fff" opacity=".85" />
+          <circle cx="32" cy="32" r="2.6" fill="#fff" opacity=".7" />
+          <circle cx="8" cy="20" r="4" fill="#fff" opacity=".85" />
+          <circle cx="20" cy="20" r="2.6" fill="#3C8CFA" />
+          <circle cx="32" cy="20" r="1.6" fill="#fff" opacity=".5" />
+          <circle cx="8" cy="8" r="2.6" fill="#fff" opacity=".7" />
+          <circle cx="20" cy="8" r="1.6" fill="#fff" opacity=".5" />
+          <circle cx="32" cy="8" r="2.4" fill="#FF6428" />
+        </svg>
+        <div class="brand-text">
+          <span class="brand-title">Energy Weather Explorer</span>
+          <span class="brand-sub">PECD v4.2 · wind, solar and temperature since 1950</span>
+        </div>
+        <nav class="tabs" id="tabs" aria-label="Views">
+          <button data-view="map">Map</button>
+          <button data-view="country">Country year</button>
+          <button data-view="dunkel">Dunkelflaute</button>
+          <button data-view="europe">Europe together</button>
+          <button data-view="years">Weather years</button>
+          <button data-view="future">Future climate</button>
+        </nav>
+        <button class="info-btn" id="infoBtn" aria-label="About the data" title="About the data">i</button>
+      </header>
+
+      <aside class="rail">
+        <div class="rail-head">
+          <div class="rail-label">Country<span id="tipCountry"></span></div>
+          <div class="rail-country" id="railCountry"></div>
+          <div class="rail-date" id="railDate"></div>
+        </div>
+        <div class="rail-label" style="margin-bottom:-6px">Metric<span id="tipMetric"></span></div>
+        <div class="metric-switch" id="metricSwitch" role="radiogroup" aria-label="Metric"></div>
+        <div class="tilemap" id="tilemap" role="listbox" aria-label="Pick a country"></div>
+        <div class="tile-legend" id="tileLegend"></div>
+        <div class="rail-hints">
+          Tiles show the selected day. Click one to pick a country.<br />
+          Drag along the timeline below, or press <kbd>[</kbd> <kbd>]</kbd>, to change the year.<br />
+          <kbd>i</kbd> top right: sources and definitions.
+        </div>
+      </aside>
+
+      <main id="app" class="content"></main>
+
+      <footer class="timeline-bar" id="timelineBar">
+        <div class="tl-year">
+          <button class="tl-step" id="yearPrev" aria-label="Previous year">‹</button>
+          <span id="tlYear"></span>
+          <button class="tl-step" id="yearNext" aria-label="Next year">›</button>
+        </div>
+        <div class="tl-chart" id="timeline"></div>
+        <div class="tl-caption"><span id="tlCaption"></span><span id="tipTimeline"></span></div>
+      </footer>
+    </div>
+
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-panel" role="dialog" aria-label="About the data">
+        <button class="drawer-close" id="drawerClose" aria-label="Close">×</button>
+        <div id="drawerBody"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

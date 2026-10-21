@@ -37,7 +37,8 @@ jobs:
       - name: CDS credentials
         env:
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
-        run: printf 'url: https://cds.climate.copernicus.eu/api\nkey: %s\n' "$CDSAPI_KEY" > ~/.cdsapirc
+        run: |
+          printf 'url: https://cds.climate.copernicus.eu/api\nkey: %s\n' "$CDSAPI_KEY" > ~/.cdsapirc
 
       # The ERA5 history (about 540 MB of zips). On a cache miss fetch.py downloads it again.
       - name: Restore raw data

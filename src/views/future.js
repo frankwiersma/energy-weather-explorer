@@ -255,7 +255,7 @@ export async function renderFuture(root, state, alive) {
       {
         textStyle: { fontFamily: FONT },
         legend: { top: 0, right: 0, itemWidth: 14, textStyle: { fontFamily: FONT, fontSize: 11 } },
-        grid: { left: 36, right: 8, top: 24, bottom: 20 },
+        grid: { left: 6, right: 8, containLabel: true, top: 24, bottom: 20 },
         tooltip: { ...tooltipCommon, valueFormatter: (v) => `${v.toFixed(1)}%` },
         xAxis: { type: "category", data: MONTHS, ...axisCommon, splitLine: { show: false } },
         yAxis: { type: "value", ...axisCommon, axisLabel: { ...axisCommon.axisLabel, formatter: "{value}%" } },

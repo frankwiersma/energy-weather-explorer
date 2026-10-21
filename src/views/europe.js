@@ -157,7 +157,7 @@ export async function renderEurope(root, state, alive) {
     ladder.setOption(
       {
         textStyle: { fontFamily: FONT },
-        grid: { left: 36, right: 8, top: 14, bottom: 26 },
+        grid: { left: 6, right: 8, containLabel: true, top: 14, bottom: 26 },
         tooltip: {
           ...tooltipCommon,
           formatter: (p) => `<b>${pools[p[0].dataIndex].join(", ")}</b><br>${p[0].value.toFixed(1)} low-wind days per year`,
@@ -253,7 +253,7 @@ export async function renderEurope(root, state, alive) {
       {
         textStyle: { fontFamily: FONT },
         legend: { top: 0, right: 0, itemWidth: 14, textStyle: { fontFamily: FONT, fontSize: 11 } },
-        grid: { left: 36, right: 8, top: 22, bottom: 22 },
+        grid: { left: 6, right: 8, containLabel: true, top: 22, bottom: 22 },
         tooltip: { ...tooltipCommon, valueFormatter: (v) => (v == null ? "–" : `${v.toFixed(0)}%`) },
         xAxis: {
           type: "category",

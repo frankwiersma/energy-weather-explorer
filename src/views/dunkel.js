@@ -234,7 +234,7 @@ export async function renderDunkel(root, state, alive) {
           textStyle: { fontFamily: FONT, fontSize: 11 },
           data: [...techs.map((k) => VARS[k].short), "Mix", ...(fc ? ["TimesFM"] : [])],
         },
-        grid: { left: 36, right: 8, top: 26, bottom: 22 },
+        grid: { left: 6, right: 8, containLabel: true, top: 26, bottom: 22 },
         tooltip: { ...tooltipCommon, valueFormatter: (v) => (v == null ? "–" : `${v.toFixed(1)}%`) },
         xAxis: {
           type: "category",

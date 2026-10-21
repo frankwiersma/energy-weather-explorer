@@ -145,7 +145,8 @@ export async function renderMap(root, state, alive) {
         const rank = same.indexOf(val) + 1;
         const word = k === "t2m" ? ["warmest", "coldest"] : k === "spv" ? ["sunniest", "dullest"] : ["windiest", "calmest"];
         const top = rank <= same.length / 2;
-        const rankText = `${ordinal(top ? rank : same.length - rank + 1)} ${top ? word[0] : word[1]} of ${same.length}`;
+        const dayName = fmtDate(iso, { day: "numeric", month: "long" });
+        const rankText = `${ordinal(top ? rank : same.length - rank + 1)} ${top ? word[0] : word[1]} ${dayName} of ${same.length}`;
         const verdict = val < c.p10 ? `<span class="down">below normal</span>` : val > c.p90 ? `<span class="up">above normal</span>` : "normal";
         return `<div class="stat" style="color:${v.color}">
           ${ICONS[k]}
@@ -153,7 +154,7 @@ export async function renderMap(root, state, alive) {
           <span class="stat-val">${fmtVar(k, val)}</span>
           <div class="gauge"><span class="band" style="left:${x(c.p10)};width:calc(${x(c.p90)} - ${x(c.p10)})"></span>
             <span class="dot" style="left:${x(val)};background:${v.color}"></span></div>
-          <span class="stat-note">${verdict} · ${rankText} ${fmtDate(iso, { day: "numeric", month: "short" })}s since ${firstYear}</span>
+          <span class="stat-note">${verdict} · ${rankText} since ${firstYear}</span>
         </div>`;
       })
       .join("");

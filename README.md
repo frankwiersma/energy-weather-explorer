@@ -1,21 +1,69 @@
-# Energy Weather Explorer
+<h1 align="center">Energy Weather Explorer</h1>
 
-How the weather drives wind and solar power in Europe: every day since 1950, Dunkelflaute spells, what
-pooling wind across countries buys you, and what climate models expect up to 2100. Built on the
-Copernicus Pan-European Climate Database (PECD) v4.2, which C3S produces with ENTSO-E.
+<p align="center">
+  <b>How the weather drives wind and solar power in Europe, every day since 1950.</b><br />
+  Dunkelflaute spells, what pooling wind across countries buys you, and what climate models expect up to 2100.
+</p>
 
-The whole app fits on one screen. A tile map of Europe picks the country and shows the selected day, a
-timeline along the bottom picks the year, and all views share one selected date. Every number has an ⓘ
-that explains it.
+<p align="center">
+  <a href="https://energy-weather.frankwiersma.workers.dev"><img alt="Live demo" src="https://img.shields.io/badge/live%20demo-energy--weather-003584?style=for-the-badge&logo=cloudflare&logoColor=white" /></a>
+  <a href="https://cds.climate.copernicus.eu/datasets/sis-energy-pecd"><img alt="Data: Copernicus PECD v4.2" src="https://img.shields.io/badge/data-Copernicus%20PECD%20v4.2-3C8CFA?style=for-the-badge" /></a>
+  <a href="https://github.com/frankwiersma/energy-weather-explorer/actions/workflows/refresh.yml"><img alt="Data refresh" src="https://img.shields.io/github/actions/workflow/status/frankwiersma/energy-weather-explorer/refresh.yml?style=for-the-badge&label=data%20refresh" /></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-FF6428?style=for-the-badge" /></a>
+</p>
 
-| View | What it shows |
-|---|---|
-| Map | Europe on one day, with a day slider, play and speed controls; per metric the normal range and the day's rank since 1950 |
-| Country year | Daily wind, solar and temperature against the 1991–2020 normal range |
-| Dunkelflaute | Calm, dark spells for an adjustable capacity mix and threshold; hourly detail, a replay on the map and a TimesFM forecast |
-| Europe together | How pooling wind with neighbouring countries reduces calm days, and how strongly neighbours move together |
-| Weather years | Every month since 1950 against normal, and winters ranked |
-| Future climate | Dunkelflaute, low-wind days and capacity factors to 2100 under SSP2-4.5 and SSP5-8.5 |
+<p align="center">
+  <a href="https://energy-weather.frankwiersma.workers.dev"><img src="docs/demo.gif" alt="The map playing through the storms of February 2020, then pooling wind across Europe" width="900" /></a>
+</p>
+
+<p align="center">
+  <a href="https://energy-weather.frankwiersma.workers.dev"><b>Open the app</b></a> ·
+  <a href="#what-it-shows">What it shows</a> ·
+  <a href="#forecasting-with-timesfm">TimesFM in the browser</a> ·
+  <a href="#data">Data</a> ·
+  <a href="#updates">How it stays current</a>
+</p>
+
+---
+
+## A few things the data shows
+
+- **The Netherlands has about 9 Dunkelflaute days a year.** That is a run of at least two days on which the
+  wind and solar mix stays under 6% of installed capacity. The worst spell since 1950 was 18 to 27 December 2006:
+  ten days at 2.6%.
+- **Sharing wind only helps with countries whose weather differs.** Belgium's wind moves almost in step with the
+  Dutch (r = 0.9), so adding it changes nothing. Germany and the UK do: pooled with its five nearest neighbours, the
+  Netherlands goes from 63 to 30 calm days a year.
+- **A time-series model can see the next day or two coming, not the next season.** TimesFM beats persistence and
+  the hourly normal by 12–33% up to 48 hours ahead, and adds nothing for the months ahead.
+- **Climate change barely moves average wind and solar output in these models.** The change by 2100 is a few
+  percent, often smaller than the disagreement between models.
+
+## What it shows
+
+The whole app fits on one screen. A tile map of Europe picks the country and shows the selected day, a timeline
+along the bottom picks the year, and all views share one selected date. Every number has an ⓘ that explains it.
+
+<table>
+  <tr>
+    <td width="50%"><a href="docs/map.png"><img src="docs/map.png" alt="Map view" /></a><br /><b>Map</b>: Europe on one day, with a day slider and play controls. Per metric the normal range and the day's rank since 1950.</td>
+    <td width="50%"><a href="docs/country.png"><img src="docs/country.png" alt="Country year view" /></a><br /><b>Country year</b>: daily wind, solar and temperature against the 1991–2020 normal range.</td>
+  </tr>
+  <tr>
+    <td><a href="docs/dunkel.png"><img src="docs/dunkel.png" alt="Dunkelflaute view" /></a><br /><b>Dunkelflaute</b>: calm, dark spells for an adjustable capacity mix and threshold, with hourly detail, a replay on the map and a TimesFM forecast.</td>
+    <td><a href="docs/europe.png"><img src="docs/europe.png" alt="Europe together view" /></a><br /><b>Europe together</b>: how pooling wind with neighbouring countries reduces calm days, and how strongly neighbours move together.</td>
+  </tr>
+  <tr>
+    <td><a href="docs/years.png"><img src="docs/years.png" alt="Weather years view" /></a><br /><b>Weather years</b>: every month since 1950 against normal, and winters ranked.</td>
+    <td><a href="docs/future.png"><img src="docs/future.png" alt="Future climate view" /></a><br /><b>Future climate</b>: Dunkelflaute, low-wind days and capacity factors to 2100 under SSP2-4.5 and SSP5-8.5.</td>
+  </tr>
+</table>
+
+### Built with
+
+[ECharts](https://echarts.apache.org/) for the charts, [Vite](https://vite.dev/) for the build,
+[ONNX Runtime Web](https://onnxruntime.ai/) for TimesFM, and Python with pandas for the data pipeline. No framework,
+no backend: a static site on Cloudflare Workers, refreshed by a GitHub Action.
 
 ## Data
 

@@ -1,9 +1,9 @@
 {
   "name": "energy-weather",
   "compatibility_date": "2026-10-01",
-  // Static site only: every request is served from assets, which are free and unlimited.
+  // Static site only: every request is served from assets, which are free and unlimited. Routing is in
+  // the URL hash, so a missing file is a real 404.
   "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "directory": "./dist"
   }
 }

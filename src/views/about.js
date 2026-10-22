@@ -12,31 +12,45 @@ export function renderAbout(root, state) {
 
     <h3>Variables</h3>
     <ul>
-      <li><b>Solar PV</b>: capacity factor of utility-scale fixed PV (technology 62), per country (NUTS 0).</li>
-      <li><b>Wind onshore</b>: capacity factor of the existing onshore fleet (technology 30, resource grade B),
-        per PECD onshore zone, averaged per country.</li>
-      <li><b>Wind offshore</b>: the same for the existing offshore fleet (technology 20), per PECD offshore zone.</li>
+      <li><b>Solar PV</b>: capacity factor of the national PV fleet, per country (NUTS 0). PECD gives four PV types
+        (60 industrial rooftop, 61 residential rooftop, 62 utility fixed, 63 utility tracking); they are weighted by each
+        country's capacity per type from ERAA 2025. Countries without that split use utility fixed PV. The projections
+        are available for utility fixed PV, so the Future view compares changes of that type.</li>
+      <li><b>Wind onshore</b>: capacity factor of the existing onshore fleet (technology 30, resource grade B).
+        PECD delivers it per zone (PEON); the national value weights the zones by their installed capacity.</li>
+      <li><b>Wind offshore</b>: the same for the operating offshore fleet (technology 20) and the PECD offshore zones
+        (PEOF). Zones without turbines do not count, and countries without operating offshore wind have no series.</li>
       <li><b>Temperature</b>: 2 m air temperature, area mean per country.</li>
     </ul>
     <p>A capacity factor is output as a share of installed capacity: 30% means a 1 GW fleet delivers 300 MW on
       average. PECD keeps the technology fixed over all years, so differences between years come from the weather
       alone, not from growth of the fleet.</p>
 
+    <h3>From zones to countries</h3>
+    <p>No official table of installed capacity per PECD zone is published. The weights are built from open data:
+      each turbine of GOWIRES (onshore) and the Open European offshore wind turbine database is assigned to the PECD
+      zone of its own country it lies in, using the PECD region masks. Onshore turbines without a rated power get the
+      median of their country. These databases give good shares within a country, so they are only used for that.
+      The per-zone view in Country year shows each zone and its share.</p>
+    <p>Between countries and technologies (the default Dunkelflaute mix, the onshore/offshore split, pooling) the
+      weights are national capacities from ENTSO-E ERAA 2025, expected for 2028; for the Netherlands and Germany the
+      Dunkelflaute defaults are the installed capacity at the end of 2024. The weights describe today's fleet, while
+      PECD's own weighting inside each zone uses the 2020 fleet.</p>
+
     <h3>Definitions</h3>
     <p><b>Normal range</b>: 10th to 90th percentile of the same calendar day (±7 days) over 1991–2020.</p>
     <p><b>Dunkelflaute</b>: a run of days on which the daily mean of the capacity-weighted wind and solar mix stays
       below the threshold. There is no single official definition, so threshold, length and capacities are adjustable.</p>
-    <p><b>Low-wind day</b> (Europe together): each country's daily wind capacity factor (mean of onshore and offshore
-      where both exist) is divided by its own long-term mean. A pool averages these relative values with equal weight,
-      and a low-wind day is a day on which the pool stays under the threshold, for example 30% of normal output.</p>
-    <p><b>Low-wind days</b> (Future climate): days on which the national wind capacity factor stays under 10%.</p>
+    <p><b>Low-wind day</b> (Europe together): the pooled wind fleet, each country weighted by its installed wind
+      capacity, delivers less than the threshold share of its capacity as a daily mean.</p>
+    <p><b>Low-wind days</b> (Future climate): days on which the national wind fleet stays under 10% of capacity.</p>
     ${
       proj
         ? `<p><b>Future climate</b>: PECD v4.2 projections ${proj.years[0]}–${proj.years[1]} from ${proj.models.length} CMIP6 models
             (${proj.models.map((x) => x.label).join(", ")}) under ${proj.scenarios.map((x) => x.label).join(" and ")}. The
-            technology is the same as in the historical data, so the change comes from the climate. The models match
-            ERA5 mean capacity factors but overstate how long calm spells last, so each model is compared with its own
-            2015–2044 baseline and that change is added to today's ERA5 level (delta method).</p>`
+            technology and the fleet weights are the same as in the historical data, so the change comes from the climate.
+            The models match ERA5 mean capacity factors but overstate how long calm spells last, so each model is compared
+            with its own 2015–2044 baseline and that change is added to today's ERA5 level (delta method).</p>`
         : ""
     }
 
@@ -45,6 +59,8 @@ export function renderAbout(root, state) {
       Database derived from reanalysis and climate projections. C3S Climate Data Store (CDS),
       DOI <code>10.24381/cds.f323c5ec</code>. Licence CC BY 4.0. Neither the European Commission nor ECMWF is
       responsible for any use of this information.</p>
+    <p>Wind farm locations: GOWIRES v1.0 (Zenodo 10.5281/zenodo.18768952, CC BY 4.0) and the Open European offshore
+      wind turbine database (Zenodo record 17311571, ODbL). National capacities: ENTSO-E ERAA 2025.</p>
     <p>Map outlines: © EuroGeographics for the administrative boundaries (Eurostat GISCO).</p>
     <p>Data refreshed on ${fmtDate(m.generated)}.</p>`;
 }

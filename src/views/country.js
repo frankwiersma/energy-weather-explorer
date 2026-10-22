@@ -1,11 +1,11 @@
 import { chart, axisCommon, tooltipCommon, FONT } from "../charts.js";
-import { VARS, ICONS, loadCountry, climatology, dayIndex, doy365, isoAt, fmtVar, pct } from "../data.js";
+import { VARS, ICONS, loadCountry, loadZones, climatology, dayIndex, doy365, isoAt, fmtVar, pct } from "../data.js";
 import { tip } from "../ui.js";
 
 const KPI_TIPS = {
-  spv: "Mean capacity factor of utility-scale fixed solar PV over the year so far: output as a share of installed peak capacity. Compared with the same calendar days in 1991–2020.",
-  won: "Mean capacity factor of the existing onshore wind fleet over the year so far, averaged over the PECD onshore zones. Compared with the same calendar days in 1991–2020.",
-  wof: "Mean capacity factor of the existing offshore wind fleet over the year so far, averaged over the PECD offshore zones. Compared with the same calendar days in 1991–2020.",
+  spv: "Mean capacity factor of the national PV fleet over the year so far: output as a share of installed peak capacity. The four PECD PV types (industrial and residential rooftop, utility fixed and tracking) are weighted by each country's capacity per type. Compared with the same calendar days in 1991–2020.",
+  won: "Mean capacity factor of the existing onshore wind fleet over the year so far. PECD delivers wind per zone; zones are weighted by their installed capacity. Compared with the same calendar days in 1991–2020.",
+  wof: "Mean capacity factor of the operating offshore wind fleet over the year so far. PECD delivers wind per zone; zones are weighted by their installed capacity, zones without turbines do not count. Compared with the same calendar days in 1991–2020.",
   t2m: "Mean 2 m air temperature over the country for the year so far, against the same calendar days in 1991–2020.",
 };
 
@@ -20,9 +20,13 @@ function mean(arr) {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 }
 
+const ZONE_COLORS = ["#003584", "#3C8CFA", "#33A92F", "#FF6428", "#A0C4E8", "#3C465A", "#7FB2F8", "#8BC98A", "#FFA47F", "#1A2B4A"];
+
 export async function renderCountry(root, state, alive) {
-  const country = await loadCountry(state.country);
+  const hasZones = state.meta.zones?.includes(state.country);
+  const [country, zones] = await Promise.all([loadCountry(state.country), hasZones ? loadZones(state.country) : null]);
   if (!alive()) return;
+  state.zoneView ??= {};
   const name = state.meta.countries[state.country];
   const { i0, i1 } = yearSlice(country, state.year);
   const dates = Array.from({ length: i1 - i0 }, (_, j) => isoAt(country.start, i0 + j));
@@ -65,85 +69,127 @@ export async function renderCountry(root, state, alive) {
         .map(
           (k) => `<section class="panel" style="border-left-color:${VARS[k].color}">
             <div class="panel-head"><h3 style="display:flex;gap:6px;align-items:center"><span style="width:18px;height:18px;color:${VARS[k].color};display:inline-flex">${ICONS[k]}</span>${VARS[k].label}${tip("Line: daily value. Light band: normal range, 10th to 90th percentile of the same calendar day (±7 days) in 1991–2020. Dashed: the median. Orange line: the selected date; click a day to move it.")}</h3>
-            <span class="sub">daily, with the normal range 1991–2020 · click a day to select it</span></div>
+            <span class="sub" id="sub-${k}"></span>
+            ${zones?.[k] ? `<div class="seg" data-zone-toggle="${k}" style="margin-left:auto"><button data-mode="national">National</button><button data-mode="zones">Per zone</button></div>${tip(`PECD delivers wind per zone. National: the zones weighted by their installed capacity (${zones[k].length} zones with turbines). Per zone: each zone's own capacity factor, with its share of the national capacity in the legend.`)}` : ""}</div>
             <div class="chart" id="c-${k}"></div>
           </section>`,
         )
         .join("")}
     </div>`;
 
-  const charts = [];
-  for (const k of keys) {
-    const clim = climatology(country[k], country.start);
-    const band = dates.map((d) => clim[doy365(d)]);
+  const charts = {};
+
+  function draw(k) {
+    const c = charts[k];
     const isT = k === "t2m";
     const scale = isT ? 1 : 100;
-    const c = chart(root.querySelector(`#c-${k}`));
-    c.setOption({
-      textStyle: { fontFamily: FONT },
-      grid: { left: 40, right: 10, top: 8, bottom: 22 },
-      tooltip: {
-        ...tooltipCommon,
-        formatter: (ps) => {
-          const j = ps[0].dataIndex;
-          return `<b>${dates[j]}</b><br>${VARS[k].label}: ${fmtVar(k, country[k][i0 + j])}<br>Normal: ${fmtVar(k, band[j].p10)} – ${fmtVar(k, band[j].p90)}`;
-        },
-      },
-      xAxis: {
-        type: "category",
-        data: dates,
-        ...axisCommon,
-        splitLine: { show: false },
-        axisLabel: {
-          ...axisCommon.axisLabel,
-          interval: (i, d) => d.endsWith("-01"),
-          formatter: (d) => new Date(d).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }),
-        },
-      },
-      yAxis: {
-        type: "value",
-        ...axisCommon,
-        min: isT ? null : 0,
-        axisLabel: { ...axisCommon.axisLabel, formatter: isT ? "{value}°" : "{value}%" },
-      },
-      series: [
-        { type: "line", data: band.map((b) => b.p10 * scale), stack: "band", symbol: "none", lineStyle: { opacity: 0 }, silent: true },
+    const perZone = zones?.[k] && state.zoneView[k] === "zones";
+    for (const b of root.querySelectorAll(`[data-zone-toggle="${k}"] button`)) b.classList.toggle("active", (b.dataset.mode === "zones") === !!perZone);
+    root.querySelector(`#sub-${k}`).textContent = perZone
+      ? "daily per PECD zone, share of national capacity in the legend"
+      : `daily, with the normal range 1991–2020 · click a day to select it`;
+    const national = country[k].slice(i0, i1).map((v) => (v == null ? null : v * scale));
+    const marker = {
+      silent: true,
+      symbol: "none",
+      animation: false,
+      label: { show: false },
+      lineStyle: { color: "#FF6428", width: 1.5, type: "solid" },
+      data: [{ xAxis: state.date }],
+    };
+    let series;
+    let legend;
+    let tooltipFmt;
+    if (perZone) {
+      const zi = Math.max(0, dayIndex(zones.start, dates[0]));
+      const list = zones[k];
+      series = [
+        ...list.map((z, n) => ({
+          type: "line",
+          name: `${z.zone} ${Math.round(z.share * 100)}%`,
+          data: z.values.slice(zi, zi + dates.length).map((v) => (v == null ? null : v * 100)),
+          symbol: "none",
+          lineStyle: { width: 1, color: ZONE_COLORS[n % ZONE_COLORS.length], opacity: 0.8 },
+          itemStyle: { color: ZONE_COLORS[n % ZONE_COLORS.length] },
+        })),
+        { type: "line", name: "National", data: national, symbol: "none", lineStyle: { color: "#1A2B4A", width: 2.2 }, itemStyle: { color: "#1A2B4A" }, markLine: marker },
+      ];
+      legend = { type: "scroll", top: 0, right: 0, left: 40, itemWidth: 12, textStyle: { fontFamily: FONT, fontSize: 10 } };
+      tooltipFmt = undefined;
+    } else {
+      const clim = climatology(country[k], country.start);
+      const band = dates.map((d) => clim[doy365(d)]);
+      series = [
+        { type: "line", data: band.map((b) => b.p10 * scale), stack: "band", stackStrategy: "all", symbol: "none", lineStyle: { opacity: 0 }, silent: true },
         {
           type: "line",
           data: band.map((b) => (b.p90 - b.p10) * scale),
           stack: "band",
+          stackStrategy: "all",
           symbol: "none",
           lineStyle: { opacity: 0 },
           areaStyle: { color: "rgba(160, 196, 232, 0.35)" },
           silent: true,
         },
         { type: "line", data: band.map((b) => b.p50 * scale), symbol: "none", lineStyle: { color: "#A0C4E8", width: 1.2, type: "dashed" }, silent: true },
-        {
-          type: "line",
-          data: country[k].slice(i0, i1).map((v) => (v == null ? null : v * scale)),
-          symbol: "none",
-          lineStyle: { color: VARS[k].color, width: 1.5 },
-          markLine: {
-            silent: true,
-            symbol: "none",
-            animation: false,
-            label: { show: false },
-            lineStyle: { color: "#FF6428", width: 1.5, type: "solid" },
-            data: [{ xAxis: state.date }],
+        { type: "line", data: national, symbol: "none", lineStyle: { color: VARS[k].color, width: 1.5 }, markLine: marker },
+      ];
+      legend = undefined;
+      tooltipFmt = (ps) => {
+        const j = ps[0].dataIndex;
+        return `<b>${dates[j]}</b><br>${VARS[k].label}: ${fmtVar(k, country[k][i0 + j])}<br>Normal: ${fmtVar(k, band[j].p10)} – ${fmtVar(k, band[j].p90)}`;
+      };
+    }
+    c.setOption(
+      {
+        textStyle: { fontFamily: FONT },
+        legend,
+        grid: { left: 6, right: 10, top: perZone ? 26 : 8, bottom: 22, containLabel: true },
+        tooltip: { ...tooltipCommon, ...(tooltipFmt ? { formatter: tooltipFmt } : { valueFormatter: (v) => (v == null ? "–" : `${v.toFixed(1)}%`) }) },
+        xAxis: {
+          type: "category",
+          data: dates,
+          ...axisCommon,
+          splitLine: { show: false },
+          axisLabel: {
+            ...axisCommon.axisLabel,
+            interval: (i, d) => d.endsWith("-01"),
+            formatter: (d) => new Date(d).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }),
           },
         },
-      ],
-    });
+        yAxis: {
+          type: "value",
+          ...axisCommon,
+          min: isT ? null : 0,
+          axisLabel: { ...axisCommon.axisLabel, formatter: isT ? "{value}°" : "{value}%" },
+        },
+        series,
+      },
+      { notMerge: true },
+    );
+  }
+
+  for (const k of keys) {
+    const c = chart(root.querySelector(`#c-${k}`));
+    charts[k] = c;
+    draw(k);
     c.getZr().on("click", (e) => {
+      if (!c.containPixel({ gridIndex: 0 }, [e.offsetX, e.offsetY])) return;
       const j = Math.round(c.convertFromPixel({ gridIndex: 0 }, [e.offsetX, e.offsetY])[0]);
       if (dates[j]) state.set({ date: dates[j] });
     });
-    charts.push(c);
   }
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-zone-toggle] button");
+    if (!btn) return;
+    const k = btn.parentElement.dataset.zoneToggle;
+    state.zoneView[k] = btn.dataset.mode;
+    draw(k);
+  });
 
   return {
-    onDate: (iso) => {
-      for (const c of charts) c.setOption({ series: [{}, {}, {}, { markLine: { data: [{ xAxis: iso }] } }] });
+    onDate: () => {
+      for (const k of keys) draw(k);
     },
   };
 }

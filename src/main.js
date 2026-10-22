@@ -113,8 +113,12 @@ async function render() {
     console.error(err);
     layer.innerHTML = `<div class="loading">Could not load data: ${err.message}</div>`;
   }
-  // ECharts paints on the next frame; swap only once the new charts are on screen.
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // ECharts paints on the next frame; swap only once the new charts are on screen. A hidden tab runs no
+  // animation frames, so do not wait for them longer than a moment.
+  await Promise.race([
+    new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    new Promise((r) => setTimeout(r, 120)),
+  ]);
   if (token !== renderToken) {
     disposeLayer(charts);
     layer.remove();

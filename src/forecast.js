@@ -17,8 +17,8 @@ export const MODEL = {
 // Backtest of the capacity-weighted mix (default weights), 300 random starting hours in 2015–2025:
 // improvement in mean absolute error over the better of persistence and the 30-day hourly normal.
 export const BACKTEST = {
-  NL: { 24: 0.26, 48: 0.12, 96: 0.07 },
-  DE: { 24: 0.33, 48: 0.25, 96: 0.07 },
+  NL: { 24: 0.26, 48: 0.11, 96: 0.06 },
+  DE: { 24: 0.35, 48: 0.25, 96: 0.05 },
 };
 
 let session = null;

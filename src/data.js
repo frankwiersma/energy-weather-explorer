@@ -89,6 +89,20 @@ export async function loadYear(year) {
   return out;
 }
 
+// Per-zone wind for countries with several PECD zones; null where the country has a single zone.
+export async function loadZones(code) {
+  const path = `zones/${code}.json`;
+  const raw = await load(path);
+  const out = { start: raw.start };
+  for (const key of ["won", "wof"]) {
+    if (!raw[key]) continue;
+    out[key] = Object.entries(raw[key])
+      .map(([zone, z]) => ({ zone, share: z.share, mw: z.mw, values: unscale(key, z.values) }))
+      .sort((a, b) => b.share - a.share);
+  }
+  return out;
+}
+
 export async function loadHourly(code, year) {
   const raw = await load(`hourly/${code}/${year}.json`);
   const out = { start: raw.start };

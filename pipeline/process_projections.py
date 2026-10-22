@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from fetch_projections import MODELS, SCENARIOS
-from process import CF_VARS, OUT, RAW, WEIGHTS, load_var, read_zip, to_country, write
+from process import CF_VARS, OUT, RAW, load_var, national_capacity, write, zone_capacity
 
 DUNKEL_THRESHOLD, DUNKEL_MIN_DAYS = 0.06, 2
 LOWWIND_THRESHOLD = 0.10
@@ -56,15 +56,20 @@ def dunkel_days(mix: pd.Series) -> pd.Series:
     return pd.Series(flag, index=mix.index).groupby(mix.index.year).sum()
 
 
-def indicators(cf: dict[str, pd.DataFrame], cc: str, years: range, periods: list[tuple[int, int]]) -> dict | None:
-    """Yearly indicators for one country from daily capacity factors per technology."""
+def indicators(cf: dict[str, pd.DataFrame], cc: str, years: range, periods: list[tuple[int, int]],
+               mix_gw: dict, wind_gw: dict) -> dict | None:
+    """Yearly indicators for one country from daily capacity factors per technology.
+
+    The mix uses the app's default capacities (meta.json weights), wind the national onshore and offshore
+    capacity, so the indicators match what the app shows.
+    """
     techs = {k: cf[k][cc] for k in CF_VARS if cc in cf[k] and cf[k][cc].notna().any()}
-    if "spv" not in techs or "won" not in techs:
+    mix_w = {k: v for k, v in mix_gw.items() if k in techs and v > 0}
+    wind_w = {k: v for k, v in wind_gw.items() if k in techs and k in ("won", "wof") and v > 0}
+    if "spv" not in techs or not mix_w or not wind_w:
         return None
-    weights = WEIGHTS.get(cc, {}).get("gw", {"spv": 1, "won": 1, "wof": 1})
-    total = sum(weights[k] for k in techs)
-    mix = sum(techs[k] * weights[k] for k in techs) / total
-    wind = pd.concat([techs[k] for k in ("won", "wof") if k in techs], axis=1).mean(axis=1)
+    mix = sum(techs[k] * v for k, v in mix_w.items()) / sum(mix_w.values())
+    wind = sum(techs[k] * v for k, v in wind_w.items()) / sum(wind_w.values())
 
     def per_year(s: pd.Series) -> list:
         return [round(float(v), 4) for v in s.reindex(list(years)).to_numpy()]
@@ -82,20 +87,18 @@ def indicators(cf: dict[str, pd.DataFrame], cc: str, years: range, periods: list
     return out
 
 
-def load_run(scenario: str, model: str) -> dict[str, pd.DataFrame]:
-    out = {}
-    for k in CF_VARS:
-        frames = read_zip(RAW / "proj" / scenario / model / f"{k}.zip")
-        df = pd.concat([to_country(f) for f in frames]).sort_index()
-        out[k] = daily(df[~df.index.duplicated(keep="last")])
-    return out
+def load_run(scenario: str, model: str, capacity: dict) -> dict[str, pd.DataFrame]:
+    return {k: daily(load_var(k, capacity, [RAW / "proj" / scenario / model / f"{k}.zip"])) for k in CF_VARS}
 
 
 def main() -> None:
     meta = json.loads((OUT / "meta.json").read_text())
     countries = list(meta["countries"])
 
-    hist_cf = {k: daily(load_var(k)) for k in CF_VARS}
+    capacity = zone_capacity()
+    national = national_capacity()
+    mix_gw = {cc: w["gw"] for cc, w in meta["weights"].items()}
+    hist_cf = {k: daily(load_var(k, capacity)) for k in CF_VARS}
     last_full = int(meta["lastDate"][:4]) - (0 if meta["lastDate"].endswith("12-31") else 1)
     hist_years = range(meta["firstYear"], last_full + 1)
     proj_years = range(2015, 2101)
@@ -107,36 +110,37 @@ def main() -> None:
             if f.stem in result:
                 result[f.stem]["proj"] = json.loads(f.read_text())["proj"]
     for cc in countries:
-        h = indicators(hist_cf, cc, hist_years, [HIST_PERIOD])
+        h = indicators(hist_cf, cc, hist_years, [HIST_PERIOD], mix_gw.get(cc, {}), national.get(cc, {}))
         if h:
             h["monthly"] = h["monthly"][f"{HIST_PERIOD[0]}–{HIST_PERIOD[1]}"]
             result[cc]["hist"] = {"years": list(hist_years), **h}
 
     for scenario in [] if hist_only else SCENARIOS:
         for model in MODELS:
-            run = load_run(scenario, model)
+            run = load_run(scenario, model, capacity)
             for cc in countries:
-                ind = indicators(run, cc, proj_years, FUTURE_PERIODS)
+                ind = indicators(run, cc, proj_years, FUTURE_PERIODS, mix_gw.get(cc, {}), national.get(cc, {}))
                 if ind and result[cc]["hist"]:
                     result[cc]["proj"]["runs"].setdefault(scenario, {})[model] = ind
             print(f"{scenario} {model}: done", flush=True)
 
-    written = 0
+    written = []
     for cc, obj in result.items():
         if obj["hist"] and obj["proj"]["runs"]:
             write(OUT / "future" / f"{cc}.json", obj)
-            written += 1
+            written.append(cc)
 
     if hist_only:
-        print(f"{written} countries, history refreshed")
+        print(f"{len(written)} countries, history refreshed")
         return
     meta["projections"] = {
         "years": [proj_years[0], proj_years[-1]],
         "scenarios": [{"id": s, "label": LABELS[s][0], "note": LABELS[s][1]} for s in SCENARIOS],
         "models": [{"id": m, "label": LABELS[m]} for m in MODELS],
+        "countries": written,
     }
     write(OUT / "meta.json", meta)
-    print(f"{written} countries with projections")
+    print(f"{len(written)} countries with projections")
 
 
 if __name__ == "__main__":

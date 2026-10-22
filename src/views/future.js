@@ -1,5 +1,5 @@
 import { chart, axisCommon, tooltipCommon, FONT, MUTED } from "../charts.js";
-import { tip } from "../ui.js";
+import { emptyState, tip } from "../ui.js";
 
 const METRICS = {
   dunkel: { label: "Dunkelflaute days", unit: "days/yr", higherIsWorse: true },
@@ -46,9 +46,16 @@ const END = [2071, 2100];
 export async function renderFuture(root, state, alive) {
   const meta = state.meta;
   if (!meta.projections) throw new Error("projections are not in this data set yet");
+  const proj = meta.projections;
+  if (!proj.countries.includes(state.country)) {
+    root.innerHTML = emptyState(
+      `No projections for ${meta.countries[state.country]}`,
+      "The climate indicators need solar and an existing wind fleet with known capacity. This country lacks one of them, so it has no Dunkelflaute or low-wind projection. Pick another country on the tile map.",
+    );
+    return { onYear: () => {} };
+  }
   const data = await loadFuture(state.country);
   if (!alive()) return;
-  const proj = meta.projections;
   const name = meta.countries[state.country];
   state.future ??= { scenario: proj.scenarios.at(-1).id, metric: "dunkel" };
   const opts = state.future;
@@ -149,11 +156,11 @@ export async function renderFuture(root, state, alive) {
           axisLabel: { ...axisCommon.axisLabel, formatter: m.cf ? "{value}%" : "{value}" },
         },
         series: [
-          { type: "line", data: lo, stack: "band", symbol: "none", lineStyle: { opacity: 0 }, silent: true, tooltip: { show: false } },
+          { type: "line", data: lo, stack: "band", stackStrategy: "all", symbol: "none", lineStyle: { opacity: 0 }, silent: true, tooltip: { show: false } },
           {
             type: "line",
             data: hi.map((h, i) => (h == null ? null : h - lo[i])),
-            stack: "band",
+            stack: "band", stackStrategy: "all",
             symbol: "none",
             lineStyle: { opacity: 0 },
             areaStyle: { color: "rgba(255,100,40,0.12)" },

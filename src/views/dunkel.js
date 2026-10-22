@@ -201,12 +201,12 @@ export async function renderDunkel(root, state, alive) {
       const lo = at(fc.p10);
       const hi = at(fc.p90);
       fcSeries.push(
-        { type: "line", name: "fc-lo", data: lo, stack: "fc", symbol: "none", lineStyle: { opacity: 0 }, silent: true, tooltip: { show: false } },
+        { type: "line", name: "fc-lo", data: lo, stack: "fc", stackStrategy: "all", symbol: "none", lineStyle: { opacity: 0 }, silent: true, tooltip: { show: false } },
         {
           type: "line",
           name: "TimesFM p10–p90",
           data: hi.map((h, j) => (h == null ? null : h - lo[j])),
-          stack: "fc",
+          stack: "fc", stackStrategy: "all",
           symbol: "none",
           lineStyle: { opacity: 0 },
           areaStyle: { color: "rgba(0, 53, 132, 0.14)" },

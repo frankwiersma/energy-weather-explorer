@@ -48,3 +48,8 @@ export function initTips() {
     }
   }, true);
 }
+
+// A panel explaining why a view has nothing to show for the selected country.
+export const emptyState = (title, text) =>
+  `<div class="view" style="place-items:center"><section class="panel" style="max-width:560px">
+    <h2>${title}</h2><div class="accent-line"></div><p class="callout" style="margin:0">${text}</p></section></div>`;

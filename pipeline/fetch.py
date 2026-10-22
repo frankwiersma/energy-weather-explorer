@@ -7,6 +7,8 @@ Each job is one CDS request and lands as a zip in data/raw/<var>/:
                           where the file version changes)
   <var>_<year>.zip        every complete year after 2025
   <var>_<year>_mMM.zip    the running year up to month MM
+Solar comes as four PV types (60 industrial rooftop, 61 residential rooftop, 62 utility fixed,
+63 utility tracking), one request per type: spv_t60_1950-2025.zip and so on.
 A request costs one unit per year with a limit of 300, and CDS caps queued requests per dataset,
 hence few large requests and a small worker pool. Existing zips are skipped, so a rerun only
 fetches what is missing.
@@ -25,6 +27,8 @@ RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
 FIRST_YEAR, BASE_END = 1950, 2025
 
 BASE = {"pecd_version": "pecd4_2", "temporal_period": ["historical"], "origin": ["era5_reanalysis"]}
+
+SOLAR_TECHS = ["60", "61", "62", "63"]
 
 VARIABLES = {
     "spv": {
@@ -82,15 +86,20 @@ def request(key: str, years: list[int], months: list[int] | None = None) -> dict
 def jobs(full: int, running: int, month: int) -> list[tuple[str, str, dict]]:
     out = []
     for key in VARIABLES:
-        if key == "t2m":
-            out.append((key, f"{key}_{FIRST_YEAR}-2021", request(key, list(range(FIRST_YEAR, 2022)))))
-            out.append((key, f"{key}_2022-{BASE_END}", request(key, list(range(2022, BASE_END + 1)))))
-        else:
-            out.append((key, f"{key}_{FIRST_YEAR}-{BASE_END}", request(key, list(range(FIRST_YEAR, BASE_END + 1)))))
-        for y in range(BASE_END + 1, full + 1):
-            out.append((key, f"{key}_{y}", request(key, [y])))
-        if month:
-            out.append((key, f"{key}_{running}_m{month:02d}", request(key, [running], list(range(1, month + 1)))))
+        variants = [(f"{key}_t{t}", {"technology": [t]}) for t in SOLAR_TECHS] if key == "spv" else [(key, {})]
+        for prefix, extra in variants:
+            def add(name: str, years: list[int], months: list[int] | None = None) -> None:
+                out.append((key, f"{prefix}_{name}", {**request(key, years, months), **extra}))
+
+            if key == "t2m":
+                add(f"{FIRST_YEAR}-2021", list(range(FIRST_YEAR, 2022)))
+                add(f"2022-{BASE_END}", list(range(2022, BASE_END + 1)))
+            else:
+                add(f"{FIRST_YEAR}-{BASE_END}", list(range(FIRST_YEAR, BASE_END + 1)))
+            for y in range(BASE_END + 1, full + 1):
+                add(str(y), [y])
+            if month:
+                add(f"{running}_m{month:02d}", [running], list(range(1, month + 1)))
     return out
 
 

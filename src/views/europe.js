@@ -1,6 +1,6 @@
 import { chart, axisCommon, tooltipCommon, FONT, MUTED } from "../charts.js";
 import { dayIndex, isoAt, fmtDate, pct } from "../data.js";
-import { tip } from "../ui.js";
+import { emptyState, tip } from "../ui.js";
 
 let windData = null;
 
@@ -9,17 +9,9 @@ async function loadWind() {
     .then((r) => r.json())
     .then((raw) => ({
       start: raw.start,
-      // Each country relative to its own long-term mean, so pooling shows the spreading effect
-      // and not the difference in capacity factor between countries.
+      gw: raw.gw,
       countries: Object.fromEntries(
-        Object.entries(raw.countries).map(([cc, a]) => {
-          const v = Float32Array.from(a, (x) => (x == null ? NaN : x / 1000));
-          let s = 0;
-          let n = 0;
-          for (const x of v) if (!Number.isNaN(x)) (s += x), (n += 1);
-          const mean = s / n;
-          return [cc, v.map((x) => x / mean)];
-        }),
+        Object.entries(raw.countries).map(([cc, a]) => [cc, Float32Array.from(a, (x) => (x == null ? NaN : x / 1000))]),
       ),
     }));
   return windData;
@@ -33,19 +25,20 @@ function distanceKm([lon1, lat1], [lon2, lat2]) {
   return 12742 * Math.asin(Math.sqrt(a));
 }
 
+// Capacity factor of the pooled fleet: each country weighted by its installed wind capacity.
 function pooled(members, wind, n) {
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     let s = 0;
-    let c = 0;
+    let w = 0;
     for (const cc of members) {
       const v = wind.countries[cc][i];
       if (!Number.isNaN(v)) {
-        s += v;
-        c += 1;
+        s += v * wind.gw[cc];
+        w += wind.gw[cc];
       }
     }
-    out[i] = c ? s / c : NaN;
+    out[i] = w ? s / w : NaN;
   }
   return out;
 }
@@ -79,35 +72,42 @@ export async function renderEurope(root, state, alive) {
   if (!alive()) return;
   const meta = state.meta;
   const home = state.country;
+  if (!wind.countries[home]) {
+    root.innerHTML = emptyState(
+      `No wind fleet for ${meta.countries[home]}`,
+      "Pooling needs an operating wind fleet with known turbine locations and capacity, and the open turbine databases list none for this country. Pick a country with wind on the tile map.",
+    );
+    return;
+  }
   const n = wind.countries[home].length;
   const years = n / 365.25;
   const byDistance = Object.keys(wind.countries)
-    .filter((cc) => meta.centroids[cc])
+    .filter((cc) => meta.centroids[cc] && wind.gw[cc])
     .sort((a, b) => distanceKm(meta.centroids[home], meta.centroids[a]) - distanceKm(meta.centroids[home], meta.centroids[b]));
   const maxSteps = Math.min(16, byDistance.length);
-  state.europe ??= { size: 6, threshold: 0.3 };
+  state.europe ??= { size: 6, threshold: 0.1 };
   const opts = state.europe;
   opts.size = Math.min(opts.size, maxSteps);
 
   root.innerHTML = `
     <div class="view" style="grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto minmax(0,1.15fr) minmax(0,0.85fr)">
       <section class="panel">
-        <div class="panel-head"><h2>Is the wind always blowing somewhere?${tip("Each country's daily wind capacity factor (mean of onshore and offshore) is divided by its own long-term average, so countries with weaker or stronger wind count equally. A pool is the plain average of its members.")}</h2></div>
-        <div class="sub" style="margin-bottom:6px">Pool the wind output of ${meta.countries[home]} with its nearest neighbours and count the
-          days on which the pool as a whole stays calm. Each country counts relative to its own average output; the pooled
-          countries are outlined on the tile map.</div>
+        <div class="panel-head"><h2>Is the wind always blowing somewhere?${tip("Each country's wind fleet (onshore and offshore zones weighted by installed capacity) is pooled with its neighbours, weighted by their installed wind capacity (ENTSO-E ERAA 2025, expected for 2028). Germany therefore counts far more than Luxembourg.")}</h2></div>
+        <div class="sub" style="margin-bottom:6px">Pool the wind fleet of ${meta.countries[home]} (${wind.gw[home]} GW) with its nearest neighbours,
+          weighted by installed capacity, and count the days on which the pool as a whole stays calm. The pooled countries
+          are outlined on the tile map.</div>
         <div class="slider-row">
           <label class="slider"><span class="slider-top"><span>Countries in the pool${tip("The pool adds the nearest countries first, by the distance between country centres.")}</span><b id="size-v"></b></span>
             <input type="range" id="size" min="1" max="${maxSteps}" step="1" value="${opts.size}" /></label>
-          <label class="slider"><span class="slider-top"><span>Calm when${tip("A day is calm when the pool delivers less than this share of its normal (long-term average) wind output.")}</span><b id="thr-v"></b></span>
-            <input type="range" id="thr" min="0.1" max="0.6" step="0.05" value="${opts.threshold}" /></label>
+          <label class="slider"><span class="slider-top"><span>Calm when${tip("A day is calm when the pooled fleet delivers less than this share of its installed capacity, as a daily mean.")}</span><b id="thr-v"></b></span>
+            <input type="range" id="thr" min="0.03" max="0.25" step="0.01" value="${opts.threshold}" /></label>
         </div>
       </section>
       <section class="panel accent" style="justify-content:center">
         <div id="callout"></div>
       </section>
       <section class="panel">
-        <div class="panel-head"><h3>Low-wind days per year as the pool grows${tip("Bar n is the pool of the n nearest countries. Orange: the current pool. Close neighbours share the same weather, so adding them barely helps; distance does.")}</h3><span class="sub">nearest first · close neighbours go calm together, distance is what helps · click a bar</span></div>
+        <div class="panel-head"><h3>Low-wind days per year as the pool grows${tip("Bar n is the pool of the n nearest countries, weighted by installed wind capacity. Orange: the current pool. Neighbours with the same weather barely help; countries whose weather differs do.")}</h3><span class="sub">nearest first, weighted by capacity · click a bar to set the pool</span></div>
         <div class="chart" id="ladder"></div>
       </section>
       <section class="panel">
@@ -115,7 +115,7 @@ export async function renderEurope(root, state, alive) {
         <div class="chart" id="matrix"></div>
       </section>
       <section class="panel" style="grid-column:1/-1">
-        <div class="panel-head"><h3 id="yearTitle"></h3>${tip("Daily wind output as a percentage of normal, for the selected country and the pool, in the year chosen on the timeline. Shaded days: calm in the selected country.")}<span class="sub">daily wind output as % of the long-term average · shaded: calm at home</span></div>
+        <div class="panel-head"><h3 id="yearTitle"></h3>${tip("Daily wind capacity factor of the selected country's fleet and of the pooled fleet, in the year chosen on the timeline. Shaded days: calm in the selected country.")}<span class="sub">daily wind capacity factor · shaded: calm at home</span></div>
         <div class="chart" id="year"></div>
       </section>
     </div>`;
@@ -137,8 +137,9 @@ export async function renderEurope(root, state, alive) {
     const thr = opts.threshold;
     const counts = poolSeries.map((s) => lowDays(s, thr));
     const pool = pools[opts.size - 1];
-    root.querySelector("#size-v").textContent = `${opts.size} · ${pool.join(" ")}`;
-    root.querySelector("#thr-v").textContent = `under ${pct(thr)} of normal output`;
+    const poolGw = pool.reduce((a, cc) => a + wind.gw[cc], 0);
+    root.querySelector("#size-v").textContent = `${opts.size} · ${pool.join(" ")} · ${Math.round(poolGw)} GW`;
+    root.querySelector("#thr-v").textContent = `under ${pct(thr)} of capacity`;
     const alone = counts[0];
     const now = counts[opts.size - 1];
     const cut = alone ? 1 - now / alone : 0;

@@ -156,7 +156,9 @@ uv venv .venv && uv pip install --python .venv/bin/python cdsapi pandas requests
 
 ## Deploy
 
-A static site on Cloudflare Workers (static assets are free and unlimited):
+A static site on Cloudflare Workers (static assets are free and unlimited). Every push to `main`, including
+the data commits of the refresh workflow, builds and deploys through Cloudflare Workers Builds with
+`bun install && bun run build` and `npx wrangler deploy`. To deploy by hand:
 
 ```bash
 bun run build

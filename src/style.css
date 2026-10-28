@@ -918,6 +918,16 @@ tbody tr.selected {
   .chart.map-chart {
     height: 420px;
   }
+  .outlook .chart {
+    height: 460px;
+  }
+  .map-panel .windmap {
+    flex: none;
+    height: 440px;
+  }
+  .legend-chips {
+    flex-wrap: wrap;
+  }
   .kpis {
     grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1079,4 +1089,136 @@ tbody tr.selected {
 .slider-top > span {
   display: inline-flex;
   align-items: center;
+}
+
+/* ---------- Outlook NL ---------- */
+.legend-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.legend-chips i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.kpi.accent {
+  border-left-color: var(--orange);
+}
+
+.map-panel {
+  background: var(--overlay);
+  border-left-color: var(--orange);
+}
+
+.map-panel h3,
+.map-panel .sub {
+  color: #fff;
+}
+
+.map-panel .sub {
+  opacity: 0.8;
+}
+
+.map-panel .tip {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.windmap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--overlay);
+}
+
+.map-hover {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  max-width: 180px;
+}
+
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.map-controls input[type="range"] {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--orange);
+}
+
+.play-btn {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.speed-legend {
+  display: inline-flex;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.speed-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.speed-legend i {
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+table.tt {
+  border-collapse: collapse;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+table.tt td {
+  padding: 1px 8px 1px 0;
+}
+
+table.tt .num {
+  text-align: right;
+}
+
+.muted {
+  color: var(--muted);
 }

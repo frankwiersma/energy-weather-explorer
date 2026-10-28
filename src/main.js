@@ -21,10 +21,12 @@ import { renderEurope } from "./views/europe.js";
 import { renderYears } from "./views/years.js";
 import { renderFuture } from "./views/future.js";
 import { renderAbout } from "./views/about.js";
+import { renderOutlook } from "./views/outlook.js";
 import { initTips, tip } from "./ui.js";
 
 const VIEWS = {
   map: renderMap,
+  outlook: renderOutlook,
   country: renderCountry,
   dunkel: renderDunkel,
   europe: renderEurope,
@@ -121,15 +123,18 @@ async function render() {
   ]);
   if (token !== renderToken) {
     disposeLayer(charts);
+    hooks.dispose?.();
     layer.remove();
     return;
   }
   for (const old of [...app.children]) {
     if (old === layer) continue;
     disposeLayer(old.__charts);
+    old.__dispose?.();
     old.remove();
   }
   layer.__charts = charts;
+  layer.__dispose = hooks.dispose;
   layer.classList.remove("pending");
   viewHooks = hooks;
   updateRail();

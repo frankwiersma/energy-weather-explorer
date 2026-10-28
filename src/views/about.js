@@ -54,6 +54,19 @@ export function renderAbout(root, state) {
         : ""
     }
 
+    <h3>Outlook for the Netherlands</h3>
+    <p>The Outlook NL view joins three parts on one hourly axis: PECD where it is published; then the first day of
+      each earlier <b>KNMI HARMONIE-AROME</b> run; and the newest run, 60 hours ahead on a 2 km grid. It is rebuilt
+      every three hours.</p>
+    <p>The weather is turned into capacity factors the way PECD does it, learned back from PECD itself: for each
+      Dutch PECD zone a curve from the 100 m wind speed (averaged over the zone like PECD averages it) to that zone's
+      capacity factor, and for solar a curve per month from radiation over land to the national PV capacity factor.
+      The curves are fitted on ERA5 2016–2024 and checked on 2025. HARMONIE is then compared with PECD on archived
+      runs since January 2026, and its wind speed and radiation get a small scale per zone so that it reproduces
+      PECD. National values use the same capacity weights as the rest of the app.</p>
+    <p>The forecast is a single deterministic run: it shows the most likely course, not the spread of possible
+      outcomes, and its errors grow with the lead time.</p>
+
     <h3>Source and licence</h3>
     <p>Copernicus Climate Change Service (2024): Climate and energy related variables from the Pan-European Climate
       Database derived from reanalysis and climate projections. C3S Climate Data Store (CDS),
@@ -61,6 +74,9 @@ export function renderAbout(root, state) {
       responsible for any use of this information.</p>
     <p>Wind farm locations: GOWIRES v1.0 (Zenodo 10.5281/zenodo.18768952, CC BY 4.0) and the Open European offshore
       wind turbine database (Zenodo record 17311571, ODbL). National capacities: ENTSO-E ERAA 2025.</p>
+    <p>Weather forecast: KNMI HARMONIE-AROME Cy43 P1 (KNMI Data Platform, CC BY 4.0). Reanalysis for the
+      outlook's curves: Copernicus Climate Change Service, ERA5 hourly time series on single levels, contains modified
+      Copernicus Climate Change Service information.</p>
     <p>Map outlines: © EuroGeographics for the administrative boundaries (Eurostat GISCO).</p>
     <p>Data refreshed on ${fmtDate(m.generated)}.</p>`;
 }

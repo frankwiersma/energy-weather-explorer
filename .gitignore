@@ -6,3 +6,5 @@ dist
 __pycache__
 .claude
 .wrangler
+/data/outlook/
+/public/outlook

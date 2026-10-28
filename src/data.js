@@ -257,3 +257,21 @@ export function annualMeans(series, start) {
 export const pct = (v, digits = 0) => (v == null ? "–" : `${(v * 100).toFixed(digits)}%`);
 export const degC = (v) => (v == null ? "–" : `${v.toFixed(1)} °C`);
 export const fmtVar = (key, v) => (key === "t2m" ? degC(v) : pct(v, 1));
+
+// The Dutch outlook (pipeline/outlook.py) is rebuilt every few hours by a GitHub Action and published on
+// the repository's `outlook` branch, so the site does not need a deploy for every HARMONIE run.
+const OUTLOOK = import.meta.env.VITE_OUTLOOK_URL ?? "https://raw.githubusercontent.com/frankwiersma/energy-weather-explorer/outlook";
+
+export async function loadOutlook() {
+  const [data, wind] = await Promise.all([
+    fetch(`${OUTLOOK}/NL.json`, { cache: "no-cache" }).then((r) => {
+      if (!r.ok) throw new Error(`outlook: HTTP ${r.status}`);
+      return r.json();
+    }),
+    fetch(`${OUTLOOK}/wind.bin`, { cache: "no-cache" }).then((r) => {
+      if (!r.ok) throw new Error(`wind field: HTTP ${r.status}`);
+      return r.arrayBuffer();
+    }),
+  ]);
+  return { ...data, wind: new Int8Array(wind) };
+}

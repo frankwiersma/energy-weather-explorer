@@ -1,0 +1,65 @@
+name: Outlook
+
+# KNMI publishes a HARMONIE run every hour, about two and a half hours after its start time. Every three
+# hours this job takes the newest run, fills in the runs missing since PECD's last month (one a day, four a
+# day for the last week), rebuilds the Dutch outlook and publishes it on the `outlook` branch, which the
+# site reads directly. The site itself is not redeployed.
+on:
+  schedule:
+    - cron: "50 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: outlook
+  cancel-in-progress: false
+
+jobs:
+  outlook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install eccodes==2.50.0 eccodeslib==2.50.0.33 numpy==2.5.4 pandas==3.0.6 requests==2.34.2
+
+      # The HARMONIE run tables since PECD's last month (a few hundred kB); the first run fills them.
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: data/raw/harmonie
+          key: outlook-${{ github.run_id }}
+          restore-keys: outlook-
+
+      - name: HARMONIE
+        env:
+          KNMI_API_KEY: ${{ secrets.KNMI_API_KEY }}
+        run: python pipeline/harmonie.py
+
+      - name: Build
+        run: python pipeline/outlook.py
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/raw/harmonie
+          key: outlook-${{ github.run_id }}
+
+      # One commit, replaced every run, so the branch does not grow.
+      - name: Publish
+        run: |
+          cd data/outlook
+          git init -q -b outlook
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add NL.json wind.bin
+          git commit -q -m "Outlook $(python -c "import json;print(json.load(open('NL.json'))['run'])")"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" outlook

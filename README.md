@@ -86,9 +86,11 @@ the scales and the scores. On the archived runs of 2026 the first forecast day m
 of 0.95 for onshore wind, 0.96 for offshore wind and 0.97 for solar (mean error 4.5, 5.4 and 2.2 percentage
 points). National values use the same capacity weights as the rest of the app.
 
-The view shows the mix and each technology against the 1991–2020 normal range for that hour, the forecast hours
-at which the 24-hour mean drops under the Dunkelflaute threshold, and the HARMONIE wind at 100 m as moving
-particles over the offshore wind farms. The forecast is one deterministic run: the most likely course, not the
+The view shows the mix and each technology against the 1991–2020 normal range for that hour, and the forecast
+hours at which the 24-hour mean drops under the Dunkelflaute threshold. The map answers where turbines run at full
+power: HARMONIE's wind at 100 m is coloured by the turbine's operating band (idle below 3 m/s, part load, full
+power from about 12 m/s, storm stop above 25 m/s), with the share of Dutch offshore capacity in each band, and
+faint lines that drift with the wind. The forecast is one deterministic run: the most likely course, not the
 spread around it.
 
 ### Built with
@@ -107,6 +109,13 @@ All data comes from the Climate Data Store (dataset `sis-energy-pecd`, PECD v4.2
 | `won` | Wind onshore capacity factor | 30, existing fleet, resource grade B | PECD onshore zones, weighted by installed capacity per zone |
 | `wof` | Wind offshore capacity factor | 20, existing fleet, resource grade B | PECD offshore zones, weighted by operating capacity per zone |
 | `t2m` | 2 m temperature | | country (NUTS 0) |
+| `dem` | Electricity demand proxy, from `t2m` | degree-day model | index against the 1991–2020 average day; GW from ERAA 2025 average demand for 2028 |
+
+The demand proxy is the degree-day model from Van Duinen et al. (2026), [ClimateYearSelection](https://github.com/bramvanduinen/ClimateYearSelection)
+(MIT): daily demand rises by 7 GWh per degree below 15 °C (heating) and by 3.5 GWh per degree above 20 °C
+(cooling), on a base of 400 GWh for the Netherlands. The app shows it as an index against the 1991–2020 average
+day and in GW scaled to each country's average demand in ERAA 2025. It reflects the weather only: no growth,
+holidays or weekdays.
 
 History is ERA5 from 1950 to the latest month. Projections (2015–2100) come from three CMIP6 models
 (EC-Earth3, MPI-ESM1-2-HR, CMCC-CM2-SR5) under SSP2-4.5 and SSP5-8.5, with the same wind technology and fleet
@@ -236,6 +245,9 @@ loaded from R2 together with the TimesFM weights.
   levels, derived from [10.24381/cds.adbb2d47](https://doi.org/10.24381/cds.adbb2d47). Contains modified
   Copernicus Climate Change Service information.
 - Map outlines: © EuroGeographics for the administrative boundaries (Eurostat GISCO).
+- Demand model: Van Duinen, van der Wiel, Thorey and Stoop (2026), *Bridging the climate to energy data gap:
+  simulated annealing for representative climate year selection*, Applied Energy,
+  [10.1016/j.apenergy.2026.129090](https://doi.org/10.1016/j.apenergy.2026.129090); ERAA 2025 average demand.
 - TimesFM 3.0 by Google Research, Apache 2.0.
 
 The code is MIT licensed. The data in `public/data/` is derived from the sources above and keeps their licences.

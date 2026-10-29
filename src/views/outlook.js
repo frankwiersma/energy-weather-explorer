@@ -1,7 +1,7 @@
 import { chart, axisCommon, tooltipCommon, FONT } from "../charts.js";
 import { VARS, CF_VARS, loadOutlook, pct } from "../data.js";
 import { emptyState, tip } from "../ui.js";
-import { createWindMap, SPEED_LEGEND } from "../windmap.js";
+import { BANDS, LEGEND_GRADIENT, createWindMap } from "../windmap.js";
 
 const HOUR = 3600e3;
 const THRESHOLD = 0.06; // the app's default Dunkelflaute threshold
@@ -66,13 +66,15 @@ export async function renderOutlook(root, state, alive) {
         <div class="chart" id="series"></div>
       </section>
       <section class="panel map-panel">
-        <div class="panel-head"><h3>Wind at 100 m, HARMONIE${tip("Wind at turbine hub height from the newest KNMI HARMONIE-AROME run (2 km grid), shown on a 0.1° grid. Particles drift with the wind; colour is speed. Dots are offshore wind farms (orange: Dutch), sized by capacity, from the Open European offshore wind turbine database (mid 2025). Drag the slider or press play to run through the forecast.")}</h3>
+        <div class="panel-head"><h3>Where turbines run at full power${tip(`Wind at turbine hub height (100 m) from the newest KNMI HARMONIE-AROME run (2 km grid), coloured by what it means for a modern turbine: ${BANDS.map((b) => `${b.label} ${b.from}–${b.to === 40 ? "" : b.to} m/s (${b.note})`).join("; ")}. The line under the map gives the share of Dutch offshore wind capacity in each band. Faint lines drift with the wind to show its direction. Dots are offshore wind farms (white: Dutch), sized by capacity, from the Open European offshore wind turbine database (mid 2025). Drag the slider or press play to run through the forecast; hovering the chart moves the map along.`)}</h3>
           <span class="sub" id="mapTime"></span></div>
+        <div class="farm-bands" id="farmBands"></div>
         <div class="windmap" id="windmap"><div class="map-hover" id="mapHover"></div></div>
         <div class="map-controls">
           <button class="play-btn" id="play" aria-label="Play forecast">▶</button>
           <input type="range" id="frame" min="0" max="${o.field.frames - 1}" step="1" value="0" aria-label="Forecast hour" />
-          <span class="speed-legend">${SPEED_LEGEND.map(([s, c]) => `<span><i style="background:${c}"></i>${s}</span>`).join("")}<span>m/s</span></span>
+          <span class="band-legend"><span class="band-bar" style="background:${LEGEND_GRADIENT}"></span>
+            <span class="band-ticks">${[3, 12, 25].map((v) => `<span style="left:${(v / 30) * 100}%">${v}</span>`).join("")}<span style="left:100%">m/s</span></span></span>
         </div>
       </section>
     </div>`;
@@ -221,16 +223,19 @@ export async function renderOutlook(root, state, alive) {
       hover.style.display = "block";
       hover.style.left = `${Math.min(h.x + 12, mapEl.clientWidth - 170)}px`;
       hover.style.top = `${h.y + 12}px`;
-      hover.innerHTML = h.farm
-        ? `<b>${h.farm.name}</b><br>${h.farm.mw} MW · since ${h.farm.since}${h.speed != null ? `<br>${h.speed.toFixed(1)} m/s from ${h.dir}` : ""}`
-        : `${h.speed.toFixed(1)} m/s from ${h.dir}`;
+      const wind = h.speed != null ? `${h.speed.toFixed(1)} m/s from ${h.dir} · <b>${h.band.label}</b>` : "";
+      hover.innerHTML = h.farm ? `<b>${h.farm.name}</b><br>${h.farm.mw} MW · since ${h.farm.since}<br>${wind}` : wind;
     },
   });
   const frameTime = (f) => runT + f * HOUR;
   function showFrame(f, fromChart) {
     map.setFrame(f);
     slider.value = f;
-    root.querySelector("#mapTime").textContent = `${when(frameTime(f))} · +${f} h · mean ${map.meanSpeed(f).toFixed(1)} m/s`;
+    root.querySelector("#mapTime").textContent = `${when(frameTime(f))} · +${f} h`;
+    const shares = map.farmBands(f);
+    root.querySelector("#farmBands").innerHTML = `<span class="fb-label">Dutch offshore capacity</span>${BANDS.map(
+      (b) => `<span class="fb-seg" style="flex:${Math.max(shares[b.label], 0.0001)};background:var(--band-${b.label.replace(" ", "-")})" title="${b.label}: ${Math.round(shares[b.label] * 100)}%">${shares[b.label] >= 0.12 ? `${b.label} ${Math.round(shares[b.label] * 100)}%` : ""}</span>`,
+    ).join("")}`;
     if (!fromChart) {
       el.setOption({ series: Array.from({ length: mapLineIndex + 1 }, (_, i) => (i === mapLineIndex
         ? { markLine: { data: [{ xAxis: frameTime(f), lineStyle: { color: "#FF6428", width: 1.5 }, label: { show: Math.abs(frameTime(f) - times[nowI]) > 2 * HOUR, formatter: "map", color: "#FF6428", fontSize: 11 } }] } }

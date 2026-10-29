@@ -21,6 +21,11 @@ export function renderAbout(root, state) {
       <li><b>Wind offshore</b>: the same for the operating offshore fleet (technology 20) and the PECD offshore zones
         (PEOF). Zones without turbines do not count, and countries without operating offshore wind have no series.</li>
       <li><b>Temperature</b>: 2 m air temperature, area mean per country.</li>
+      <li><b>Demand (proxy)</b>: electricity demand estimated from the daily temperature with the degree-day model of
+        Van Duinen et al. (2026, Applied Energy): 7 GWh per day more for every degree below 15 °C and 3.5 GWh more for
+        every degree above 20 °C, on a base of 400 GWh for the Netherlands. Shown as an index against the 1991–2020
+        average day and in GW scaled to each country's average demand in ERAA 2025 (2028). Weather only: no growth,
+        holidays or weekdays.</li>
     </ul>
     <p>A capacity factor is output as a share of installed capacity: 30% means a 1 GW fleet delivers 300 MW on
       average. PECD keeps the technology fixed over all years, so differences between years come from the weather

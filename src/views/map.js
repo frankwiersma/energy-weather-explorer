@@ -12,6 +12,7 @@ import {
   fmtDate,
   fmtVar,
   scaleLabel,
+  demandGW,
 } from "../data.js";
 import { tip } from "../ui.js";
 
@@ -132,8 +133,8 @@ export async function renderMap(root, state, alive) {
         if (val == null)
           return `<div class="stat" style="color:${v.color}">${ICONS[k]}<span class="stat-name" style="color:var(--text)">${v.label}</span><span class="stat-val">–</span><span class="stat-note">No data for this country</span></div>`;
         const c = clim(k)[d];
-        const lo = k === "t2m" ? Math.min(c.p10, val) - 4 : 0;
-        const hi = k === "t2m" ? Math.max(c.p90, val) + 4 : Math.max(c.p90 * 1.25, val * 1.05, 0.05);
+        const lo = k === "t2m" ? Math.min(c.p10, val) - 4 : k === "dem" ? Math.min(c.p10, val) - 0.08 : 0;
+        const hi = k === "t2m" ? Math.max(c.p90, val) + 4 : k === "dem" ? Math.max(c.p90, val) + 0.08 : Math.max(c.p90 * 1.25, val * 1.05, 0.05);
         const x = (vv) => `${Math.max(0, Math.min(100, ((vv - lo) / (hi - lo)) * 100))}%`;
         // Rank of this day among the same calendar day in every year.
         const same = [];
@@ -143,7 +144,7 @@ export async function renderMap(root, state, alive) {
         }
         same.sort((a, b) => b - a);
         const rank = same.indexOf(val) + 1;
-        const word = k === "t2m" ? ["warmest", "coldest"] : k === "spv" ? ["sunniest", "dullest"] : ["windiest", "calmest"];
+        const word = { t2m: ["warmest", "coldest"], spv: ["sunniest", "dullest"], dem: ["highest-demand", "lowest-demand"] }[k] ?? ["windiest", "calmest"];
         const top = rank <= same.length / 2;
         const dayName = fmtDate(iso, { day: "numeric", month: "long" });
         const rankText = `${ordinal(top ? rank : same.length - rank + 1)} ${top ? word[0] : word[1]} ${dayName} of ${same.length}`;
@@ -151,7 +152,7 @@ export async function renderMap(root, state, alive) {
         return `<div class="stat" style="color:${v.color}">
           ${ICONS[k]}
           <span class="stat-name" style="color:var(--text)">${v.label}</span>
-          <span class="stat-val">${fmtVar(k, val)}</span>
+          <span class="stat-val">${fmtVar(k, val)}${k === "dem" && demandGW(state.meta, state.country, val) != null ? ` <small>${demandGW(state.meta, state.country, val).toFixed(1)} GW</small>` : ""}</span>
           <div class="gauge"><span class="band" style="left:${x(c.p10)};width:calc(${x(c.p90)} - ${x(c.p10)})"></span>
             <span class="dot" style="left:${x(val)};background:${v.color}"></span></div>
           <span class="stat-note">${verdict} · ${rankText} since ${firstYear}</span>

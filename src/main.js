@@ -235,6 +235,7 @@ async function drawTimeline() {
   const k = state.metric;
   const series = country[k] ?? country.won ?? country.spv;
   const isT = k === "t2m";
+  const warm = isT || k === "dem"; // orange for warmer or for more demand
 
   // Mean per calendar day over 1991-2020.
   const sum = new Float64Array(365);
@@ -269,7 +270,7 @@ async function drawTimeline() {
     tlData.push({ year: y, anomaly: n ? (isT ? dv / n : dv / dn) : null, partial: n < 360 });
   }
 
-  const lim = isT ? 1.5 : 0.15;
+  const lim = isT ? 1.5 : k === "dem" ? 0.04 : 0.15;
   timeline.setOption(
     {
       textStyle: { fontFamily: FONT },
@@ -298,7 +299,7 @@ async function drawTimeline() {
           data: tlData.map((d) => ({
             value: d.anomaly,
             itemStyle: {
-              color: tlColor(d.anomaly, lim, isT),
+              color: tlColor(d.anomaly, lim, warm),
               opacity: d.partial ? 0.55 : 1,
             },
           })),
@@ -317,12 +318,12 @@ async function drawTimeline() {
   );
 }
 
-function tlColor(a, lim, isT) {
+function tlColor(a, lim, warm) {
   if (a == null) return "#E8EDF4";
   const t = Math.max(-1, Math.min(1, a / lim));
-  // Temperature: warm is orange. Capacity factor: more output is blue.
-  const pos = isT ? [255, 100, 40] : [0, 53, 132];
-  const neg = isT ? [60, 140, 250] : [255, 100, 40];
+  // Temperature and demand: up is orange. Capacity factor: more output is blue.
+  const pos = warm ? [255, 100, 40] : [0, 53, 132];
+  const neg = warm ? [60, 140, 250] : [255, 100, 40];
   const base = [221, 229, 240];
   const c = t >= 0 ? pos : neg;
   const f = Math.abs(t);
@@ -337,7 +338,7 @@ function updateCaption() {
   $("tlYear").textContent = state.year;
   const k = state.metric;
   $("tlCaption").innerHTML = `<b>${VARS[k].label}</b> per year in ${state.meta.countries[state.country]},
-    against 1991–2020. ${k === "t2m" ? "Orange is warmer" : "Blue is more output, orange less"}. Drag to change the year.`;
+    against 1991–2020. ${k === "t2m" ? "Orange is warmer" : k === "dem" ? "Orange is more demand" : "Blue is more output, orange less"}. Drag to change the year.`;
 }
 
 function setupTimeline() {

@@ -2,7 +2,7 @@
 
 Outputs:
   meta.json              countries, coverage, default capacity weights
-  country/<CC>.json      daily series 1950 onwards for one country
+  country/<CC>.json      daily series 1950 onwards for one country (including the demand proxy)
   daily/<YYYY>.json      daily values for all countries in one year (map view)
   hourly/<CC>/<YYYY>.json  hourly capacity factors for the countries in HOURLY
   zones/<CC>.json        daily wind per PECD zone with its capacity share (countries with several zones)
@@ -10,7 +10,7 @@ Outputs:
 
 Wind arrives per PECD zone and is weighted by installed capacity per zone (pipeline/zone_capacity.csv).
 
-Values are stored as integers: capacity factor x1000, temperature in 0.1 degC.
+Values are stored as integers: capacity factor and demand index x1000, temperature in 0.1 degC.
 """
 
 import io
@@ -59,6 +59,17 @@ def load_solar(national: dict) -> pd.DataFrame:
         weights = {t: w for t, w in weights.items() if w > 0} or {"62": 1.0}
         out[cc] = sum(types[t][cc] * w for t, w in weights.items()) / sum(weights.values())
     return pd.DataFrame(out).astype("float32")
+
+
+def demand_index(t2m: pd.DataFrame) -> pd.DataFrame:
+    """Daily electricity demand proxy from the daily mean temperature, as an index (1 = the 1991-2020 average day).
+
+    The degree-day model of Van Duinen et al. (2026, Applied Energy; github.com/bramvanduinen/ClimateYearSelection,
+    MIT): demand of the Netherlands in GWh/day is 400 plus 7 per degree below 15 degC plus 3.5 per degree above
+    20 degC. Other countries use the same shape; the app scales the index to ERAA's average demand per country.
+    """
+    gwh = 400 + 7 * (15 - t2m).clip(lower=0) + 3.5 * (t2m - 20).clip(lower=0)
+    return gwh / gwh.loc["1991":"2020"].mean()
 
 
 def mix_weights(cc: str, available: set[str], national: dict) -> dict | None:
@@ -201,18 +212,20 @@ def main() -> None:
     days = pd.date_range(start, end, freq="D")
     daily = {k: d.reindex(days) for k, d in daily.items()}
     raw_daily = {k: df.resample("D").mean().reindex(days) for k, df in raw.items()}
-    factor = {k: (10 if k == "t2m" else 1000) for k in VARS}
+    daily["dem"] = demand_index(daily["t2m"])
+    out_vars = [*VARS, "dem"]
+    factor = {k: (10 if k == "t2m" else 1000) for k in out_vars}
 
     for cc in countries:
         obj = {"start": str(start.date())}
-        for k in VARS:
+        for k in out_vars:
             obj[k] = ints(daily[k][cc], factor[k]) if cc in daily[k] and daily[k][cc].notna().any() else None
         write(OUT / "country" / f"{cc}.json", obj)
 
     for year in range(start.year, end.year + 1):
         sel = (days.year == year)
         obj = {"start": f"{year}-01-01", "days": int(sel.sum())}
-        for k in VARS:
+        for k in out_vars:
             obj[k] = {
                 cc: ints(daily[k].loc[sel, cc], factor[k])
                 for cc in countries
@@ -276,6 +289,7 @@ def main() -> None:
             "hourly": HOURLY,
             "zones": zoned_countries,
             "weights": weights,
+            "demand": {cc: national[cc]["demand"] for cc in countries if national.get(cc, {}).get("demand")},
         },
     )
     print(f"{len(countries)} countries, {start.date()} .. {last.date()}")

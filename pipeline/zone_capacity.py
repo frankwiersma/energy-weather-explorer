@@ -109,7 +109,8 @@ def assign(turbines: pd.DataFrame, mask: xr.DataArray) -> pd.Series:
 
 
 def national() -> pd.DataFrame:
-    """MW per country and technology from ERAA 2025 (final), target year 2028, available on the market."""
+    """MW per country and technology from ERAA 2025 (final), target year 2028, available on the market, and
+    the average demand (MW) per country for the same target year, for the demand proxy."""
     import io
     import zipfile
 
@@ -124,7 +125,14 @@ def national() -> pd.DataFrame:
     table = df.pivot_table(index="cc", columns="tech", values="Value", aggfunc="sum", fill_value=0)
     table = table.reindex(columns=["won", "wof", "spv60", "spv61", "spv62", "spv63"], fill_value=0)
     table.insert(0, "spv", table[["spv60", "spv61", "spv62", "spv63"]].sum(axis=1))
-    return table.round(0).astype(int)
+    with zipfile.ZipFile(WORK / "eraa_dashboard.zip") as z:
+        name = next(n for n in z.namelist() if n.endswith("Aggregated_Demand.csv"))
+        dem = pd.read_csv(io.BytesIO(z.read(name)), encoding="utf-8-sig")
+    dem = dem[(dem["data version"] == "ERAA 2025 final") & (dem["Target_Year"] == 2028)
+              & (dem["Measure"] == "Hourly Demand (GW)") & (dem["Measure_Type"] == "AVG")]
+    dem["cc"] = dem["Market_Node"].str[:2].map(lambda c: NODE_COUNTRY.get(c, c))
+    table["demand"] = dem.groupby("cc")["Value"].sum() * 1000
+    return table.fillna(0).round(0).astype(int)
 
 
 def main() -> None:
@@ -132,7 +140,8 @@ def main() -> None:
     nat = national()
     NATIONAL.write_text(
         "# Installed capacity (MW) per country, ENTSO-E ERAA 2025 final, target year 2028, units available on the\n"
-        "# market (GenerationCapacities.csv in ERAA_2025_Dashboard_RawData.zip), built by pipeline/zone_capacity.py.\n"
+        "# market (GenerationCapacities.csv in ERAA_2025_Dashboard_RawData.zip), and average demand (MW) for the same\n"
+        "# target year (Aggregated_Demand.csv), built by pipeline/zone_capacity.py.\n"
         + nat.to_csv()
     )
     print(f"wrote {len(nat)} countries to {NATIONAL.name}")

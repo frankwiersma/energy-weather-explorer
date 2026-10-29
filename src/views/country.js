@@ -1,5 +1,5 @@
 import { chart, axisCommon, tooltipCommon, FONT } from "../charts.js";
-import { VARS, ICONS, loadCountry, loadZones, climatology, dayIndex, doy365, isoAt, fmtVar, pct } from "../data.js";
+import { VARS, ICONS, loadCountry, loadZones, climatology, dayIndex, doy365, isoAt, fmtVar, pct, demandGW } from "../data.js";
 import { tip } from "../ui.js";
 
 const KPI_TIPS = {
@@ -7,6 +7,7 @@ const KPI_TIPS = {
   won: "Mean capacity factor of the existing onshore wind fleet over the year so far. PECD delivers wind per zone; zones are weighted by their installed capacity. Compared with the same calendar days in 1991–2020.",
   wof: "Mean capacity factor of the operating offshore wind fleet over the year so far. PECD delivers wind per zone; zones are weighted by their installed capacity, zones without turbines do not count. Compared with the same calendar days in 1991–2020.",
   t2m: "Mean 2 m air temperature over the country for the year so far, against the same calendar days in 1991–2020.",
+  dem: "Electricity demand estimated from temperature with a degree-day model (Van Duinen et al., 2026): more demand for every degree below 15 °C (heating) and above 20 °C (cooling). Shown against the 1991–2020 average day; in GW scaled to ERAA 2025's average demand for 2028. Weather alone, so no growth, holidays or weekdays.",
 };
 
 function yearSlice(country, year) {
@@ -45,18 +46,20 @@ export async function renderCountry(root, state, alive) {
   });
 
   root.innerHTML = `
-    <div class="view" style="grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto repeat(2,minmax(0,1fr))">
+    <div class="view" style="grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto repeat(${Math.ceil(keys.length / 2)},minmax(0,1fr))">
       <div class="kpis" style="grid-column:1/-1">
         ${kpis
           .map(({ k, value, ref }) => {
             const diff = value != null && ref != null ? value - ref : null;
-            const cls = diff == null || k === "t2m" ? "" : diff >= 0 ? "up" : "down";
+            const cls = diff == null || k === "t2m" || k === "dem" ? "" : diff >= 0 ? "up" : "down";
             const delta =
               diff == null
                 ? ""
                 : k === "t2m"
                   ? `<span class="${cls}">${diff >= 0 ? "+" : ""}${diff.toFixed(1)} °C</span> vs 1991–2020`
-                  : `<span class="${cls}">${diff >= 0 ? "+" : ""}${((diff / ref) * 100).toFixed(0)}%</span> vs 1991–2020 (${pct(ref, 1)})`;
+                  : k === "dem"
+                    ? `<span>${diff >= 0 ? "+" : ""}${((diff / ref) * 100).toFixed(1)}%</span> vs 1991–2020${demandGW(state.meta, state.country, value) != null ? ` · ${demandGW(state.meta, state.country, value).toFixed(1)} GW average` : ""}`
+                    : `<span class="${cls}">${diff >= 0 ? "+" : ""}${((diff / ref) * 100).toFixed(0)}%</span> vs 1991–2020 (${pct(ref, 1)})`;
             return `<div class="kpi" style="border-left-color:${VARS[k].color}">
               <div class="kpi-label">${VARS[k].label} · ${state.year}${partial ? " so far" : ""}${tip(KPI_TIPS[k])}</div>
               <div class="kpi-value">${fmtVar(k, value)}</div>
@@ -67,7 +70,7 @@ export async function renderCountry(root, state, alive) {
       </div>
       ${keys
         .map(
-          (k) => `<section class="panel" style="border-left-color:${VARS[k].color}">
+          (k, i) => `<section class="panel" style="border-left-color:${VARS[k].color}${keys.length % 2 && i === keys.length - 1 ? ";grid-column:1/-1" : ""}">
             <div class="panel-head"><h3 style="display:flex;gap:6px;align-items:center"><span style="width:18px;height:18px;color:${VARS[k].color};display:inline-flex">${ICONS[k]}</span>${VARS[k].label}${tip("Line: daily value. Light band: normal range, 10th to 90th percentile of the same calendar day (±7 days) in 1991–2020. Dashed: the median. Orange line: the selected date; click a day to move it.")}</h3>
             <span class="sub" id="sub-${k}"></span>
             ${zones?.[k] ? `<div class="seg" data-zone-toggle="${k}" style="margin-left:auto"><button data-mode="national">National</button><button data-mode="zones">Per zone</button></div>${tip(`PECD delivers wind per zone. National: the zones weighted by their installed capacity (${zones[k].length} zones with turbines). Per zone: each zone's own capacity factor, with its share of the national capacity in the legend.`)}` : ""}</div>
@@ -160,7 +163,8 @@ export async function renderCountry(root, state, alive) {
         yAxis: {
           type: "value",
           ...axisCommon,
-          min: isT ? null : 0,
+          min: isT || k === "dem" ? null : 0,
+          scale: k === "dem",
           axisLabel: { ...axisCommon.axisLabel, formatter: isT ? "{value}°" : "{value}%" },
         },
         series,

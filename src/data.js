@@ -21,7 +21,11 @@ export const VARS = {
   won: { label: "Wind onshore", short: "Onshore", unit: "%", color: "#3C8CFA" },
   wof: { label: "Wind offshore", short: "Offshore", unit: "%", color: "#003584" },
   t2m: { label: "Temperature", short: "Temp", unit: "°C", color: "#3C465A" },
+  dem: { label: "Demand (proxy)", short: "Demand", unit: "%", color: "#33A92F" },
 };
+
+// Demand is an index (1 = the 1991-2020 average day); meta.demand gives each country's average in GW.
+export const demandGW = (meta, cc, v) => (v == null || !meta.demand?.[cc] ? null : v * meta.demand[cc]);
 
 export const CF_VARS = ["spv", "won", "wof"];
 
@@ -30,6 +34,7 @@ export const ICONS = {
   won: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v12M9 22h6"/><circle cx="12" cy="9" r="1.4"/><path d="M12 7.6 12.8 2.4M13.2 9.6l4.6 2.6M10.8 9.8l-4.4 3"/></svg>`,
   wof: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v9"/><circle cx="12" cy="8" r="1.3"/><path d="M12 6.7 12.7 2M13.1 8.6l4.2 2.3M10.9 8.8l-4 2.7M2 19c2 0 2-1.3 4-1.3S8 19 10 19s2-1.3 4-1.3 2 1.3 4 1.3 2-1.3 4-1.3M2 22c2 0 2-1.3 4-1.3S8 22 10 22s2-1.3 4-1.3 2 1.3 4 1.3 2-1.3 4-1.3"/></svg>`,
   t2m: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0Z"/><path d="M12 11v6"/></svg>`,
+  dem: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0V7ZM12 17v5"/></svg>`,
   play: `<svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5v11l9-5.5z"/></svg>`,
   pause: `<svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z"/></svg>`,
 };
@@ -40,6 +45,7 @@ export const SCALES = {
   won: { min: 0, max: 0.7, colors: ["#F5F7FA", "#A0C4E8", "#3C8CFA", "#003584"] },
   wof: { min: 0, max: 0.9, colors: ["#F5F7FA", "#A0C4E8", "#3C8CFA", "#003584"] },
   t2m: { min: -15, max: 30, colors: ["#003584", "#3C8CFA", "#A0C4E8", "#F5F7FA", "#FFC2A9", "#FF6428"] },
+  dem: { min: 0.85, max: 1.35, colors: ["#F5F7FA", "#D6EED5", "#8BC98A", "#33A92F", "#1F7A1C"] },
 };
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));

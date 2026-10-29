@@ -197,7 +197,7 @@ button {
 
 .metric-switch {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--near-white);
   border-radius: 8px;
   padding: 3px;
@@ -1185,24 +1185,63 @@ tbody tr.selected {
   cursor: pointer;
 }
 
-.speed-legend {
-  display: inline-flex;
-  gap: 6px;
-  font-size: 11px;
+.band-legend {
+  position: relative;
+  flex: 0 0 170px;
+  height: 26px;
+}
+
+.band-bar {
+  position: absolute;
+  inset: 2px 0 auto;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.band-ticks span {
+  position: absolute;
+  top: 12px;
+  transform: translateX(-50%);
+  font-size: 10.5px;
   color: rgba(255, 255, 255, 0.85);
-  white-space: nowrap;
 }
 
-.speed-legend span {
-  display: inline-flex;
+.band-ticks span:last-child {
+  transform: translateX(-100%);
+}
+
+.map-panel {
+  --band-idle: rgb(32, 66, 128);
+  --band-part-load: rgb(80, 145, 235);
+  --band-full-power: rgb(255, 120, 60);
+  --band-storm-stop: rgb(190, 30, 70);
+}
+
+.farm-bands {
+  display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
+  height: 20px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #fff;
 }
 
-.speed-legend i {
-  width: 10px;
-  height: 4px;
-  border-radius: 2px;
+.fb-label {
+  flex: none;
+  margin-right: 8px;
+  opacity: 0.85;
+}
+
+.fb-seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
 }
 
 table.tt {

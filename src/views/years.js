@@ -62,7 +62,7 @@ export async function renderYears(root, state, alive) {
     const anomaly = (v, m) => (v == null ? null : isT ? v - ref[m] : v / ref[m] - 1);
     const data = [];
     years.forEach((y, i) => values[i].forEach((v, m) => v != null && data.push([m, i, anomaly(v, m), v])));
-    const lim = isT ? 4 : 0.5;
+    const lim = isT ? 4 : k === "dem" ? 0.15 : 0.5;
     const fmtA = (a) => (isT ? `${a >= 0 ? "+" : ""}${a.toFixed(1)} °C` : `${a >= 0 ? "+" : ""}${(a * 100).toFixed(0)}%`);
 
     heat.setOption(
@@ -97,7 +97,7 @@ export async function renderYears(root, state, alive) {
           itemWidth: 10,
           calculable: false,
           inRange: {
-            color: isT
+            color: isT || k === "dem"
               ? ["#003584", "#A0C4E8", "#F5F7FA", "#FFC2A9", "#FF6428"]
               : ["#FF6428", "#FFC2A9", "#F5F7FA", "#A0C4E8", "#003584"],
           },
@@ -148,8 +148,8 @@ export async function renderYears(root, state, alive) {
       const m = (v[0] + v[1] + v[2]) / 3;
       winters.push({ label: `${y - 1}/${String(y).slice(2)}`, year: y, mean: m, diff: isT ? m - refW : m / refW - 1 });
     }
-    winters.sort((a, b) => a.mean - b.mean);
-    root.querySelector("#winterTitle").textContent = isT ? "Coldest winters" : k === "spv" ? "Darkest winters" : "Weakest winters";
+    winters.sort((a, b) => (k === "dem" ? b.mean - a.mean : a.mean - b.mean));
+    root.querySelector("#winterTitle").textContent = isT ? "Coldest winters" : k === "dem" ? "Highest-demand winters" : k === "spv" ? "Darkest winters" : "Weakest winters";
     root.querySelector("#winters").innerHTML = winters
       .map(
         (w) => `<tr data-y="${w.year}" class="${w.year === state.year ? "selected" : ""}"><td>${w.label}</td>

@@ -46,7 +46,7 @@ export async function renderOutlook(root, state, alive) {
     : "";
 
   root.innerHTML = `
-    <div class="view outlook" style="grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)">
+    <div class="view outlook" style="grid-template-columns:minmax(0,1fr) var(--map-w, 36%);grid-template-rows:auto auto minmax(0,1fr)">
       <section class="panel" style="grid-column:1/-1">
         <div class="panel-head">
           <h2>Outlook for the Netherlands${tip("Wind and solar output of the Dutch fleet over the past weeks and the next 60 hours. The past comes from PECD where it is published, then from the first day of earlier HARMONIE runs; the future is the newest KNMI HARMONIE forecast. Weather is turned into capacity factors with curves fitted on ERA5 against PECD, and HARMONIE is scaled to reproduce PECD, so all parts are on the same scale as the rest of the app." + skill)}</h2>
@@ -227,6 +227,18 @@ export async function renderOutlook(root, state, alive) {
       hover.innerHTML = h.farm ? `<b>${h.farm.name}</b><br>${h.farm.mw} MW · since ${h.farm.since}<br>${wind}` : wind;
     },
   });
+  // The map column is as wide as the map at the height it gets, so there are no empty bands beside it.
+  const view = root.querySelector(".outlook");
+  const panel = root.querySelector(".map-panel");
+  const fitMap = () => {
+    const extra = panel.clientWidth - mapEl.clientWidth;
+    const width = Math.round(mapEl.clientHeight * map.aspect + extra);
+    view.style.setProperty("--map-w", `${Math.max(300, Math.min(width, view.clientWidth * 0.5))}px`);
+  };
+  const fitObserver = new ResizeObserver(fitMap);
+  fitObserver.observe(view);
+  fitMap();
+
   const frameTime = (f) => runT + f * HOUR;
   function showFrame(f, fromChart) {
     map.setFrame(f);
@@ -273,6 +285,7 @@ export async function renderOutlook(root, state, alive) {
   return {
     dispose() {
       stop();
+      fitObserver.disconnect();
       map.destroy();
     },
   };

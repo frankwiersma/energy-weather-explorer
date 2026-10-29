@@ -270,6 +270,8 @@ export function createWindMap(container, { field, wind, geo, farms, onHover }) {
 
   return {
     frames,
+    // Width over height of the field as drawn, to size the panel around it.
+    aspect: (lon1 - lon0) / ((lat1 - lat0) / kx),
     setFrame(i) {
       frame = Math.max(0, Math.min(frames - 1, i));
       drawField();

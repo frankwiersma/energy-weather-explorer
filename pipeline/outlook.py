@@ -126,9 +126,11 @@ def main() -> None:
     now = pd.Timestamp(datetime.now(timezone.utc).replace(tzinfo=None)).floor("h")
     start = (now - pd.Timedelta(days=HISTORY_DAYS)).floor("D")
 
+    # PECD's last hour, also when it lies before the window shown (PECD trails real time by weeks).
+    pecd_last = pd.Timestamp(meta["lastDate"]) + pd.Timedelta(hours=23)
     published = pecd(start)
-    chain = debias(harmonie_chain(runs, published.index.max()), tf)
-    covered = chain.index.max() if len(chain) else published.index.max()
+    chain = debias(harmonie_chain(runs, pecd_last), tf)
+    covered = chain.index.max() if len(chain) else pecd_last
     forecast = debias(newest[newest["lead"] >= 1].drop(columns="lead"), tf)
     forecast = forecast[forecast.index > covered]
 
@@ -157,7 +159,11 @@ def main() -> None:
         "hours": len(axis),
         "now": index_of(now),
         "run": run_start.strftime("%Y-%m-%dT%H:00Z"),
-        "segments": [{"source": s, "from": index_of(a), "to": index_of(b)} for s, a, b in segments if a is not None and a >= axis[0]],
+        "segments": [
+            {"source": s, "from": index_of(max(a, axis[0])), "to": index_of(b)}
+            for s, a, b in segments
+            if a is not None and b >= axis[0]
+        ],
         "gw": gw,
         "cf": {k: ints(cf[k], 1000) for k in TECHS + ["mix"]},
         "ws": {t: ints(mean_wind(ws, tf, t), 10) for t in ("won", "wof")},
